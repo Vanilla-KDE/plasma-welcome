@@ -22,7 +22,7 @@ Kirigami.AbstractCard {
     property double backgroundScale: 1
     property int blurRadius: 32
 
-    readonly property string wallpaper: "file:" + Private.App.installPrefix + "/share/wallpapers/Next/contents/images/5120x2880.png"
+    readonly property string wallpaper: "file:///usr/share/wallpapers/fairy-tale/contents/images/9556x4096.webp"
     readonly property int desktopWidth: 1024 * backgroundScale
     readonly property int desktopHeight: 576 * backgroundScale
 

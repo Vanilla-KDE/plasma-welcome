@@ -19,9 +19,7 @@ Welcome.Page {
     id: root
 
     heading: i18nc("@title", "Welcome")
-    description: Private.App.customIntroText.length > 0
-            ? xi18nc("@info:usagetip %1 is custom text supplied by the distro", "%1<nl/><nl/>This operating system is running Plasma, a free and open-source desktop environment created by KDE, an international software community of volunteers. It is designed to be simple by default for a smooth experience, but powerful when needed to help you really get things done. We hope you love it!", Private.App.customIntroText)
-            : xi18nc("@info:usagetip %1 is the name of the user's distro", "Welcome to the %1 operating system running KDE Plasma!<nl/><nl/>Plasma is a free and open-source desktop environment created by KDE, an international software community of volunteers. It is designed to be simple by default for a smooth experience, but powerful when needed to help you really get things done. We hope you love it!", Welcome.Distro.name)
+    description: xi18nc("@info:usagetip %1 is the name of the user's distro", "Welcome to Vanilla OS Kipferl! Let's set up your operating system.")
 
     actions: [
         Kirigami.Action {
@@ -54,8 +52,8 @@ Welcome.Page {
         Kirigami.UrlButton {
             id: plasmaLink
             Layout.topMargin: Kirigami.Units.largeSpacing
-            text: i18nc("@action:button", "Learn more about the KDE community")
-            url: "https://community.kde.org/Welcome_to_KDE?source=plasma-welcome"
+            text: i18nc("@action:button", "Learn more about Vanilla OS")
+            url: "https://vanillaos.org"
         },
         Kirigami.UrlButton {
             Layout.topMargin: Kirigami.Units.largeSpacing
@@ -79,11 +77,7 @@ Welcome.Page {
                 // Our default image
                 Private.App.customIntroIcon.length === 0
 
-            Layout.alignment: Qt.AlignHCenter
-            Layout.fillHeight: true
-            Layout.maximumWidth: root.width - (root.padding * 2)
-
-            sourceComponent: isImage ? imageComponent : iconComponent
+        onClicked: Qt.openUrlExternally(url)
 
             Component {
                 id: imageComponent
@@ -93,13 +87,38 @@ Welcome.Page {
                     source: Private.App.customIntroIcon || "konqi-kde-hi.png"
                     fillMode: Image.PreserveAspectFit
 
-                    Kirigami.PlaceholderMessage {
-                        width: root.width - (Kirigami.Units.largeSpacing * 4)
-                        anchors.centerIn: parent
-                        text: i18nc("@title", "Image loading failed")
-                        explanation: xi18nc("@info:placeholder", "Could not load <filename>%1</filename>. Make sure it exists.", Private.App.customIntroIcon)
-                        visible: image.status == Image.Error
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillHeight: true
+                Layout.maximumWidth: root.width
+
+                sourceComponent: imageComponent
+
+                Component {
+                    id: imageComponent
+
+                    Image {
+                        id: image
+                        source: "file:///usr/share/icons/hicolor/scalable/emblems/emblem-vanilla.svg"
+                        fillMode: Image.PreserveAspectFit
+
+                        Kirigami.PlaceholderMessage {
+                            width: root.width - (Kirigami.Units.largeSpacing * 4)
+                            anchors.centerIn: parent
+                            text: i18nc("@title", "Image loading failed")
+                            explanation: xi18nc("@info:placeholder", "Could not load <filename>%1</filename>. Make sure it exists.", Private.App.customIntroIcon)
+                            visible: image.status == Image.Error
+                        }
                     }
+                }
+
+                HoverHandler {
+                    id: hoverhandler
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                QQC2.ToolTip {
+                    visible: hoverhandler.hovered
+                    text: i18nc("@action:button clicking on this takes the user to a web page", "Visit %1", konqiButton.url)
                 }
             }
 

@@ -134,7 +134,8 @@ Kirigami.ApplicationWindow {
                 _pushPage(_createPage("Welcome.qml"));
 
                 _pushPage(_createPage("Network.qml"));
-
+                _pushPage(_createPage("SoftwareInstaller.qml"));
+                _pushPage(_createPage("SystemUpdate.qml"));
                 _pushPage(_createPage("SimpleByDefault.qml"));
                 _pushPage(_createPage("PowerfulWhenNeeded.qml"));
 
