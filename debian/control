@@ -1,0 +1,54 @@
+Source: plasma-welcome
+Section: kde
+Maintainer: Debian Qt/KDE Maintainers <debian-qt-kde@lists.debian.org>
+Uploaders: Aurélien COUDERC <coucouf@debian.org>,
+           Patrick Franz <deltaone@debian.org>,
+           Fangcat_Dev <f20091219@outlook.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-sequence-kf6,
+               pkg-kde-tools,
+               dh-sequence-qmldeps,
+               cmake (>= 3.16~),
+               extra-cmake-modules (>= 6.22.0~),
+               kirigami-addons-dev (>= 1.2.0~),
+               libkf6config-dev (>= 6.22.0~),
+               libkf6configwidgets-dev (>= 6.22.0~),
+               libkf6coreaddons-dev (>= 6.22.0~),
+               libkf6dbusaddons-dev (>= 6.22.0~),
+               libkf6i18n-dev (>= 6.22.0~),
+               libkf6jobwidgets-dev (>= 6.22.0~),
+               libkf6kcmutils-dev (>= 6.22.0~),
+               libkf6kio-dev (>= 6.22.0~),
+               libkf6newstuff-dev (>= 6.22.0~),
+               libkf6notifications-dev (>= 6.22.0~),
+               libkf6service-dev (>= 6.22.0~),
+               libkf6svg-dev (>= 6.22.0~),
+               libkf6userfeedback-dev,
+               libkf6windowsystem-dev (>= 6.22.0~),
+               libkirigami-dev (>= 6.22.0~),
+               libplasma-dev (>= 6.6.5~),
+               milou,
+               plasma-nm (>= 4:6.6.3~),
+               qml6-module-org-kde-plasma-plasma5support,
+               qt6-base-dev (>= 6.10.0~),
+               qt6-declarative-dev (>= 6.10.0~),
+               qt6-declarative-private-dev,
+               qt6-svg-dev (>= 6.10.0~),
+Standards-Version: 4.7.4
+Homepage: https://invent.kde.org/plasma/plasma-welcome
+Vcs-Browser: https://salsa.debian.org/qt-kde-team/kde/plasma-welcome
+Vcs-Git: https://salsa.debian.org/qt-kde-team/kde/plasma-welcome.git
+
+Package: plasma-welcome
+Architecture: any
+Depends: milou,
+         plasma-desktoptheme,
+         plasma-nm,
+         ${misc:Depends},
+         ${plasma-version:Depends},
+         ${qml6:Depends},
+         ${shlibs:Depends},
+Description: KDE Plasma welcome center
+ Welcome Center is the perfect introduction to KDE Plasma! It can help
+ you learn how to connect to the internet, install apps, customize the
+ system, and more!

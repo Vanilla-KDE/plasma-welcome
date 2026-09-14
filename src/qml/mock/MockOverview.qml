@@ -19,7 +19,7 @@ Item {
 
     // We're intentionally ignoring our 16:10 desktop wallpaper (MockDesktop) - whilst that fits the square
     // window, we want to be more representative of what a user will see - most use a 16:9 display.
-    readonly property string wallpaper: "file:" + Private.App.installPrefix + "/share/wallpapers/Next/contents/images/5120x2880.png"
+    readonly property string wallpaper: "file:///usr/share/wallpapers/fairy-tale/contents/images/9556x4096.webp"
     readonly property double scale: layout.scale
 
     // Underlay

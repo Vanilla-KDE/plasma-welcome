@@ -75,6 +75,9 @@ ecm_target_qml_sources(plasma-welcome
     qml/pages/Discover.qml
     qml/pages/Feedback.qml
     qml/pages/Enjoy.qml
+    qml/pages/SoftwareInstaller.qml
+    qml/pages/SoftwareInstaller/apps.js
+    qml/pages/SystemUpdate.qml
     qml/pages/enjoy/Supporters.qml
 
     RESOURCES
