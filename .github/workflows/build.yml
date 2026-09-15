@@ -5,9 +5,19 @@ on:
     branches: ["master"]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     container:
       image: ghcr.io/vanilla-os/pico:latest
       volumes:
@@ -22,26 +32,37 @@ jobs:
         run: |
           apt-get update
           apt-get build-dep -y .
+
       - name: Build .deb package
         run: |
-            dpkg-buildpackage
-            mv ../plasma-welcome_*.deb plasma-welcome.deb
-      - name: Calculate and Save Checksums
-        run: |
-          sha256sum plasma-welcome.deb >> checksums.txt
+          dpkg-buildpackage -b -us -uc
+          mv ../plasma-welcome_*.deb plasma-welcome-${{ matrix.arch }}.deb
+
       - uses: actions/upload-artifact@v4
         with:
-          name: plasma-welcome
-          path: |
-              checksums.txt
-              plasma-welcome.deb
-      - uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
+          name: deb-${{ matrix.arch }}
+          path: plasma-welcome-${{ matrix.arch }}.deb
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-            token: "${{ secrets.GITHUB_TOKEN }}"
-            tag_name: "continuous"
-            prerelease: true
-            name: "Continuous Build"
-            files: |
-              checksums.txt
-              plasma-welcome.deb
+          pattern: deb-*
+          merge-multiple: true
+
+      - name: Calculate checksums
+        run: |
+          sha256sum plasma-welcome-*.deb > checksums.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: "continuous"
+          prerelease: true
+          name: "Continuous Build"
+          files: |
+            checksums.txt
+            plasma-welcome-*.deb

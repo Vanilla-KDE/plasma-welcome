@@ -5,67 +5,77 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
 jobs:
   build-artifacts:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     container:
       image: ghcr.io/vanilla-os/pico:latest
       volumes:
         - /proc:/proc
         - /:/run/host
       options: --privileged -it
-    permissions:
-      contents: read
 
     steps:
-        - uses: actions/checkout@v4
-  
-        - name: Install build dependencies
-          run: |
-            apt-get update
-            apt-get build-dep -y .
-  
-        - name: Build .deb package
-          run: |
-              dpkg-buildpackage
-              mv ../plasma-welcome_*.deb plasma-welcome.deb
-  
-        - name: Calculate and Save Checksums
-          run: |
-            sha256sum plasma-welcome.deb >> checksums.txt
-  
-        - uses: actions/upload-artifact@v4
-          with:
-            name: first-setup
-            path: |
-                checksums.txt
-                plasma-welcome.deb
-  release:
-    runs-on: ubuntu-latest
-    needs: build-artifacts
-    permissions:
-      contents: write # to create and upload assets to releases
-      attestations: write # to upload assets attestation for build provenance
-      id-token: write # grant additional permission to attestation action to mint the OIDC token permission
+      - uses: actions/checkout@v4
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get build-dep -y .
+  
+      - name: Build .deb package
+        run: |
+          dpkg-buildpackage -b -us -uc
+          mv ../plasma-welcome_*.deb plasma-welcome-${{ matrix.arch }}.deb
+
+      - uses: actions/upload-artifact@v4
         with:
-          fetch-depth: 0
+          name: deb-${{ matrix.arch }}
+          path: plasma-welcome-${{ matrix.arch }}.deb
 
-      - name: Download Artifact
+  release:
+    needs: build-artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: plasma-welcome
+          pattern: deb-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          sha256sum plasma-welcome-*.deb > checksums.txt
 
       - name: Create Release
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" --generate-notes plasma-welcome.deb checksums.txt
-      
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --generate-notes \
+            --title "${{ github.ref_name }}" \
+            plasma-welcome-*.deb checksums.txt
+
       - name: Attest Release Files
-        id: attest
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'plasma-welcome.deb, checksums.txt'
+          subject-path: |
+            plasma-welcome-*.deb
+            checksums.txt
