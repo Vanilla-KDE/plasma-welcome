@@ -22,6 +22,8 @@ jobs:
         run: |
           apt-get update
           apt-get build-dep -y .
+          apt-get install -y devscripts
+          uscan --verbose --force-download --download-current-version
       - name: Build .deb package
         run: |
             dpkg-buildpackage
