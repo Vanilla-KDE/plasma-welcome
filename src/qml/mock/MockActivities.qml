@@ -107,7 +107,7 @@ Item {
                     // We're intentionally ignoring our 16:10 desktop wallpaper (MockDesktop) - whilst that fits the square
                     // window, we want to maximise what we can fit in our limited height and be more representative of what
                     // a user will see - most use a 16:9 display.
-                    source: "file:///usr/share/wallpapers/fairy-tale/contents/images/9556x4096.webp"
+                    source: "file:///usr/share/wallpapers/FairyTale/contents/images/9556x4096.webp"
                     mipmap: true
                 }
 

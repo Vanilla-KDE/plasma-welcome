@@ -50,12 +50,6 @@ Welcome.Page {
 
     topContent: [
         Kirigami.UrlButton {
-            id: plasmaLink
-            Layout.topMargin: Kirigami.Units.largeSpacing
-            text: i18nc("@action:button", "Learn more about Vanilla OS")
-            url: "https://vanillaos.org"
-        },
-        Kirigami.UrlButton {
             Layout.topMargin: Kirigami.Units.largeSpacing
             text: i18nc("@action:button %1 is the name of the user's distro", "Learn more about %1", Welcome.Distro.name)
             url: Welcome.Distro.homeUrl
