@@ -80,6 +80,11 @@ ecm_target_qml_sources(plasma-welcome
     qml/pages/SystemUpdate.qml
     qml/pages/enjoy/Supporters.qml
 
+    qml/pages/components/AppCard.qml
+    qml/pages/components/GroupCard.qml
+    qml/pages/components/LogDialog.qml
+    qml/pages/components/SubsystemCard.qml
+
     RESOURCES
     assets/blender.svg
     assets/endlesssky.png

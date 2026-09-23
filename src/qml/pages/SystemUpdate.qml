@@ -1,5 +1,5 @@
 /*
- *  SPDX-FileCopyrightText: 2026 Fangcat_Dev <f20091219@outlook.com>
+ *  SPDX-FileCopyrightText: 2026 Fangcat_Dev <fangcat_dev@outlook.com>
  *
  *  SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
  */

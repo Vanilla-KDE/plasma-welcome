@@ -3,7 +3,7 @@ Section: kde
 Maintainer: Debian Qt/KDE Maintainers <debian-qt-kde@lists.debian.org>
 Uploaders: Aurélien COUDERC <coucouf@debian.org>,
            Patrick Franz <deltaone@debian.org>,
-           Fangcat_Dev <f20091219@outlook.com>
+           Fangcat_Dev <fangcat_dev@outlook.com>
 Build-Depends: debhelper-compat (= 13),
                dh-sequence-kf6,
                pkg-kde-tools,
