@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 Fangcat_Dev <f20091219@outlook.com>
+ * SPDX-FileCopyrightText: 2026 Fangcat_Dev <fangcat_dev@outlook.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
  */
@@ -38,6 +38,12 @@ Welcome.Page {
         Kirigami.Theme.textColor.b,
         0.25
     )
+
+    function showLog(title, log) {
+        logDialog.appName = title;
+        logDialog.logText = log;
+        logDialog.open();
+    }
 
     function loadApps() {
         try {
@@ -281,20 +287,18 @@ Welcome.Page {
             return;
 
         win.showPassiveNotification(
-            i18nc("@info", "Subsystem setup failed"),
+            i18nc("@info", "System setup failed"),
             "long",
             i18nc("@action:button", "View log"),
             function() {
-                logDialog.appName = subsystemCard.subsystemTitle;
-                logDialog.logText = log;
-                logDialog.open();
+                root.showLog(subsystemCard.subsystemTitle, log);
             }
         );
     }
 
     function runSubsystem(onFinished) {
-        const command = subsystemCard.subsystemCommand;
-        if (!command || command.length === 0) {
+        const commands = subsystemCard.subsystemCommands;
+        if (commands.length === 0) {
             subsystemCard.subsystemStatus = "installed";
             onFinished(true, "");
             return;
@@ -303,12 +307,40 @@ Welcome.Page {
         subsystemCard.subsystemStatus = "installing";
         subsystemCard.subsystemLog = "";
 
+        runSubsystemCommand(commands, 0, onFinished);
+    }
+
+    // Welcome.Utils.runCommand() runs a single command without a shell, so
+    // multiple lines are executed here one after another and stop on the first
+    // failure, collecting every output into subsystemLog.
+    function runSubsystemCommand(commands, index, onFinished) {
+        if (index >= commands.length) {
+            subsystemCard.subsystemStatus = "installed";
+            onFinished(true, subsystemCard.subsystemLog);
+            return;
+        }
+
+        const command = commands[index];
+        appendSubsystemLog(i18nc("@info:shell", "$ %1", command));
+
         Welcome.Utils.runCommand(command, function(returnStatus, outputText) {
-            const success = (returnStatus === 0);
-            subsystemCard.subsystemStatus = success ? "installed" : "failed";
-            subsystemCard.subsystemLog = outputText;
-            onFinished(success, outputText);
+            if (outputText && outputText.length > 0)
+                appendSubsystemLog(outputText);
+
+            if (returnStatus !== 0) {
+                subsystemCard.subsystemStatus = "failed";
+                onFinished(false, subsystemCard.subsystemLog);
+                return;
+            }
+
+            runSubsystemCommand(commands, index + 1, onFinished);
         });
+    }
+
+    function appendSubsystemLog(text) {
+        subsystemCard.subsystemLog = subsystemCard.subsystemLog.length > 0
+                ? subsystemCard.subsystemLog + "\n" + text
+                : text;
     }
 
     function startInstallation() {
@@ -359,9 +391,7 @@ Welcome.Page {
                         "long",
                         i18nc("@action:button", "View log"),
                         function() {
-                            logDialog.appName = app.name;
-                            logDialog.logText = outputText;
-                            logDialog.open();
+                            root.showLog(app.name, outputText);
                         }
                     );
                 }
@@ -373,43 +403,8 @@ Welcome.Page {
 
     Component.onCompleted: loadApps()
 
-    Kirigami.Dialog {
+    LogDialog {
         id: logDialog
-
-        property string appName: ""
-        property string logText: ""
-
-        title: i18nc("@title:window", "Install log: %1", appName)
-        preferredWidth: Kirigami.Units.gridUnit * 30
-        preferredHeight: Kirigami.Units.gridUnit * 20
-        padding: Kirigami.Units.largeSpacing
-
-        ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
-
-            QQC2.ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-
-                QQC2.TextArea {
-                    text: logDialog.logText
-                    readOnly: true
-                    wrapMode: TextEdit.Wrap
-                    font.family: "monospace"
-                    selectByMouse: true
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
-                QQC2.Button {
-                    text: i18nc("@action:button", "Close")
-                    onClicked: logDialog.close()
-                }
-            }
-        }
     }
 
     ColumnLayout {
@@ -449,266 +444,32 @@ Welcome.Page {
                 width: parent.width
                 spacing: Kirigami.Units.largeSpacing
 
-                Kirigami.ShadowedRectangle {
+                SubsystemCard {
                     id: subsystemCard
-
-                    property string subsystemTitle: i18nc("@title", "Setup Subsystem")
-                    property string subsystemCommand: "vso native init"
-                    property string subsystemStatus: "pending"   // pending | installing | installed | failed
-                    property string subsystemLog: ""
-
-                    Layout.fillWidth: true
-                    Layout.topMargin: Kirigami.Units.largeSpacing
-                    Layout.bottomMargin: Kirigami.Units.largeSpacing
-
-                    color: Kirigami.Theme.backgroundColor
-                    radius: Kirigami.Units.smallSpacing
-
-                    border.width: 1
-                    border.color: root.cardBorderColor
-
-                    implicitHeight: subsystemLayout.implicitHeight
-                                    + (Kirigami.Units.largeSpacing * 2)
-
-                    ColumnLayout {
-                        id: subsystemLayout
-                        anchors {
-                            left: parent.left
-                            top: parent.top
-                            right: parent.right
-                            margins: Kirigami.Units.largeSpacing
-                        }
-                        spacing: Kirigami.Units.smallSpacing
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Kirigami.Units.smallSpacing
-
-                            QQC2.Label {
-                                Layout.fillWidth: true
-                                text: subsystemCard.subsystemTitle
-                                font.weight: Font.DemiBold
-                            }
-
-                            Item {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                visible: subsystemCard.subsystemStatus !== "pending"
-
-                                QQC2.BusyIndicator {
-                                    anchors.centerIn: parent
-                                    width: 24
-                                    height: 24
-                                    visible: subsystemCard.subsystemStatus === "installing"
-                                    running: visible
-                                }
-
-                                Kirigami.Icon {
-                                    anchors.centerIn: parent
-                                    width: 22
-                                    height: 22
-                                    source: "dialog-ok-apply"
-                                    color: Kirigami.Theme.positiveTextColor
-                                    visible: subsystemCard.subsystemStatus === "installed"
-                                }
-
-                                Kirigami.Icon {
-                                    anchors.centerIn: parent
-                                    width: 22
-                                    height: 22
-                                    source: "dialog-error"
-                                    color: Kirigami.Theme.negativeTextColor
-                                    visible: subsystemCard.subsystemStatus === "failed"
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            logDialog.appName = subsystemCard.subsystemTitle
-                                            logDialog.logText = subsystemCard.subsystemLog
-                                            logDialog.open()
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    cardBorderColor: root.cardBorderColor
+                    onLogRequested: function(title, log) {
+                        root.showLog(title, log);
                     }
                 }
 
                 Repeater {
                     model: root.groups
 
-                    delegate: Kirigami.ShadowedRectangle {
-                        id: groupCard
-
-                        required property var modelData
-                        required property int index
-
-                        Layout.fillWidth: true
-                        Layout.topMargin: Kirigami.Units.largeSpacing
-                        Layout.bottomMargin: Kirigami.Units.largeSpacing
-
-                        color: Kirigami.Theme.backgroundColor
-                        radius: Kirigami.Units.smallSpacing
-
-                        border.width: 1
-                        border.color: root.cardBorderColor
-
-                        implicitHeight: groupLayout.implicitHeight + (Kirigami.Units.largeSpacing * 2)
-
-                        ColumnLayout {
-                            id: groupLayout
-                            anchors {
-                                left: parent.left
-                                top: parent.top
-                                right: parent.right
-                                margins: Kirigami.Units.largeSpacing
-                            }
-                            spacing: Kirigami.Units.smallSpacing
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: Kirigami.Units.smallSpacing
-
-                                QQC2.Label {
-                                    text: groupCard.modelData.name
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    font.weight: Font.DemiBold
-                                }
-
-                                QQC2.Switch {
-                                    checked: groupCard.modelData.allSelected
-                                    enabled: !root.installing
-                                    onToggled: root.toggleGroup(groupCard.index, checked)
-                                }
-
-                                QQC2.ToolButton {
-                                    text: groupCard.modelData.expanded ? "▾" : "▸"
-                                    onClicked: root.toggleGroupExpanded(groupCard.index)
-                                }
-                            }
-
-                            QQC2.Label {
-                                Layout.leftMargin: Kirigami.Units.gridUnit
-                                text: i18nc("@info", "%1 selected of %2",
-                                             groupCard.modelData.selectedCount,
-                                             groupCard.modelData.apps.length)
-                                color: Kirigami.Theme.disabledTextColor
-                                visible: groupCard.modelData.expanded
-                            }
-
-                            ColumnLayout {
-                                Layout.leftMargin: Kirigami.Units.gridUnit
-                                Layout.rightMargin: 0
-                                Layout.fillWidth: true
-                                visible: groupCard.modelData.expanded
-                                spacing: Kirigami.Units.smallSpacing
-
-                                Repeater {
-                                    model: groupCard.modelData.apps
-
-                                    delegate: Kirigami.ShadowedRectangle {
-                                        id: appCard
-
-                                        required property var modelData
-                                        required property int index
-
-                                        Layout.fillWidth: true
-                                        Layout.topMargin: Kirigami.Units.smallSpacing
-                                        Layout.bottomMargin: Kirigami.Units.smallSpacing
-
-                                        color: Kirigami.Theme.alternateBackgroundColor
-                                        radius: Kirigami.Units.smallSpacing
-
-                                        border.width: 1
-                                        border.color: root.cardBorderColor
-
-                                        implicitHeight: appRow.implicitHeight + (Kirigami.Units.smallSpacing * 2)
-
-                                        RowLayout {
-                                            id: appRow
-                                            anchors {
-                                                left: parent.left
-                                                top: parent.top
-                                                right: parent.right
-                                                margins: Kirigami.Units.smallSpacing
-                                            }
-                                            spacing: Kirigami.Units.smallSpacing
-
-                                            Image {
-                                                source: root.iconCache[appCard.modelData.id] || ""
-                                                sourceSize.width: 32
-                                                sourceSize.height: 32
-                                                asynchronous: true
-                                                cache: true
-                                                fillMode: Image.PreserveAspectFit
-                                                visible: source != ""
-
-                                                Layout.preferredWidth: 32
-                                                Layout.preferredHeight: 32
-                                            }
-
-                                            QQC2.Label {
-                                                Layout.fillWidth: true
-                                                text: appCard.modelData.name
-                                                wrapMode: Text.WordWrap
-                                            }
-
-                                            Item {
-                                                Layout.preferredWidth: 32
-                                                Layout.preferredHeight: 32
-                                                visible: appCard.modelData.selected
-
-                                                QQC2.BusyIndicator {
-                                                    anchors.centerIn: parent
-                                                    width: 24
-                                                    height: 24
-                                                    visible: appCard.modelData.installStatus === "installing"
-                                                    running: visible
-                                                }
-
-                                                Kirigami.Icon {
-                                                    anchors.centerIn: parent
-                                                    width: 22
-                                                    height: 22
-                                                    source: "dialog-ok-apply"
-                                                    color: Kirigami.Theme.positiveTextColor
-                                                    visible: appCard.modelData.installStatus === "installed"
-                                                }
-
-                                                Kirigami.Icon {
-                                                    anchors.centerIn: parent
-                                                    width: 22
-                                                    height: 22
-                                                    source: "dialog-error"
-                                                    color: Kirigami.Theme.negativeTextColor
-                                                    visible: appCard.modelData.installStatus === "failed"
-
-                                                    MouseArea {
-                                                        anchors.fill: parent
-                                                        cursorShape: Qt.PointingHandCursor
-                                                        onClicked: {
-                                                            logDialog.appName = appCard.modelData.name
-                                                            logDialog.logText = appCard.modelData.installLog
-                                                            logDialog.open()
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            QQC2.Switch {
-                                                checked: appCard.modelData.selected
-                                                enabled: !root.installing
-                                                onToggled: root.toggleApp(
-                                                               groupCard.index,
-                                                               appCard.index,
-                                                               checked)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    delegate: GroupCard {
+                        iconCache: root.iconCache
+                        installing: root.installing
+                        cardBorderColor: root.cardBorderColor
+                        onGroupToggled: function(groupIndex, checked) {
+                            root.toggleGroup(groupIndex, checked);
+                        }
+                        onGroupExpandToggled: function(groupIndex) {
+                            root.toggleGroupExpanded(groupIndex);
+                        }
+                        onAppToggled: function(groupIndex, appIndex, checked) {
+                            root.toggleApp(groupIndex, appIndex, checked);
+                        }
+                        onLogRequested: function(title, log) {
+                            root.showLog(title, log);
                         }
                     }
                 }
