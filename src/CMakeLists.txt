@@ -76,7 +76,6 @@ ecm_target_qml_sources(plasma-welcome
     qml/pages/Feedback.qml
     qml/pages/Enjoy.qml
     qml/pages/SoftwareInstaller.qml
-    qml/pages/SoftwareInstaller/apps.js
     qml/pages/SystemUpdate.qml
     qml/pages/enjoy/Supporters.qml
 
@@ -98,6 +97,17 @@ ecm_target_qml_sources(plasma-welcome
 
 target_compile_definitions(plasma-welcome PRIVATE "DISTRO_CUSTOM_PAGE_FOLDER=\"${DISTRO_CUSTOM_PAGE_FOLDER}\"")
 target_compile_definitions(plasma-welcome PRIVATE "DISTRO_CUSTOM_INTRO_FILE=\"${DISTRO_CUSTOM_INTRO_FILE}\"")
+target_compile_definitions(plasma-welcome PRIVATE "APPS_DATA_FILE=\"${APPS_DATA_FILE}\"")
+
+# App list for the software installer page. It is installed to the data
+# directory so it can be customised on disk, and embedded as a fallback
+# for when no file is present (e.g. running from the build directory).
+qt_add_resources(plasma-welcome "appsdata"
+    PREFIX "/org/kde/plasma/welcome"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/data"
+    FILES data/apps.json
+)
+install(FILES data/apps.json DESTINATION ${KDE_INSTALL_DATADIR}/plasma/plasma-welcome)
 
 target_link_libraries(plasma-welcome PRIVATE
     plasma-welcome-publicplugin # Link the plugin for the public library

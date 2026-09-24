@@ -10,8 +10,7 @@ import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.welcome as Welcome
-
-import "apps.js" as AppsData
+import org.kde.plasma.welcome.private as Private
 
 Welcome.Page {
     id: root
@@ -47,7 +46,15 @@ Welcome.Page {
 
     function loadApps() {
         try {
-            const parsed = AppsData.data;
+            const raw = Private.App.appsData;
+            if (!raw) {
+                console.warn("Failed to load app list from", Private.App.appsDataFile);
+                root.groups = [];
+                root.selectedApps = [];
+                return;
+            }
+
+            const parsed = JSON.parse(raw);
             const loadedGroups = [];
 
             Object.keys(parsed).forEach(function(groupName) {

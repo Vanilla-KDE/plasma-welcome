@@ -7,6 +7,9 @@
  */
 
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QStandardPaths>
 
 #include <KAuthorized>
 #include <KDesktopFile>
@@ -16,6 +19,7 @@
 #include "config-plasma-welcome.h"
 
 #include "app.h"
+#include "welcome_debug.h"
 
 App::App(QObject *parent)
     : QObject(parent)
@@ -72,6 +76,42 @@ QStringList App::distroPages() const
     }
 
     return pages;
+}
+
+QString App::appsDataFile() const
+{
+    QStringList candidates;
+
+    const QString overrideFile = qEnvironmentVariable("PLASMA_WELCOME_APPS_FILE");
+    if (!overrideFile.isEmpty()) {
+        candidates.append(overrideFile);
+    }
+
+    candidates.append(QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("plasma/plasma-welcome/apps.json")));
+
+    candidates.append(QString::fromLatin1(APPS_DATA_FILE));
+
+    for (const QString &candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return QStringLiteral(":/org/kde/plasma/welcome/apps.json");
+}
+
+QString App::appsData() const
+{
+    const QString path = appsDataFile();
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCWarning(WELCOME_LOG) << "Failed to open the app list" << path << file.errorString();
+        return QString();
+    }
+
+    qCDebug(WELCOME_LOG) << "Using the app list from" << path;
+    return QString::fromUtf8(file.readAll());
 }
 
 // Workaround for lack of appstream info in snaps for advertised items on Discover page
