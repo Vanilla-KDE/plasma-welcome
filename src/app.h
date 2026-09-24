@@ -35,12 +35,19 @@ public:
     QStringList distroPages() const;
     bool isDistroSnapOnly() const;
 
+    // Externally provided app list for the Software Installer page.
+    // See app.cpp for the lookup order (user override, distro override, installed default).
+    QString appsDataFile() const;
+    QString appsData() const;
+
     Q_PROPERTY(Mode mode MEMBER m_mode CONSTANT)
     Q_PROPERTY(QStringList pages MEMBER m_pages CONSTANT)
     Q_PROPERTY(QString installPrefix READ installPrefix CONSTANT)
     Q_PROPERTY(QString distroPagesDir READ distroPagesDir CONSTANT)
     Q_PROPERTY(QStringList distroPages READ distroPages CONSTANT)
     Q_PROPERTY(bool isDistroSnapOnly READ isDistroSnapOnly CONSTANT)
+    Q_PROPERTY(QString appsDataFile READ appsDataFile CONSTANT)
+    Q_PROPERTY(QString appsData READ appsData CONSTANT)
     Q_PROPERTY(QString customIntroText MEMBER m_customIntroText CONSTANT)
     Q_PROPERTY(QString customIntroIcon MEMBER m_customIntroIcon CONSTANT)
     Q_PROPERTY(QString customIntroIconLink MEMBER m_customIntroIconLink CONSTANT)

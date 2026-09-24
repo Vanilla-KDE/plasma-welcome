@@ -3,7 +3,7 @@
     SPDX-FileCopyrightText: 2022-Nate Graham <nate@kde.org>
 -->
 
-# Plasma Welcome App
+# Plasma Welcome App for Vanilla OS
 Friendly onboarding wizard for Plasma
 
 Welcome Center is the perfect introduction to KDE Plasma! It can help you learn how to connect to the internet, install apps, customize the system, and more!
@@ -31,6 +31,29 @@ LiveInstaller=calamares
 ```
 
 `LiveInstaller` is optional, used to show a shortcut to launch the installer. It should be the name of a desktop file in `/usr/share/applications`, without the `.desktop` extension.
+
+# Customizing app list
+
+Simply place your app list at `/usr/share/plasma/plasma-welcome/apps.json`.
+
+Here is an example:
+
+```json
+{
+    "Test apps": [
+        {
+            "name": "App 1",
+            "id": "org.app.one"
+        },
+        {
+            "name": "App 2",
+            "id": "org.app.two",
+            "active": false
+        }
+    ],
+}
+
+```
 
 # Customizing the first page
 By default, the first page introduces the distro and mostly talks about Plasma and KDE. If desired, this can be changed by placing a specially crafted desktop file at `/usr/share/plasma/plasma-welcome/intro-customization.desktop`. In this file, you can supply custom intro text, which will be displayed first, before the standard text talking about Plasma and KDE. It is recommended to keep this text short.

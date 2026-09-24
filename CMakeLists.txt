@@ -41,6 +41,7 @@ include(ECMQtDeclareLoggingCategory)
 
 set(DISTRO_CUSTOM_PAGE_FOLDER "/usr/share/plasma/plasma-welcome/extra-pages/" CACHE STRING "Folder on disk to find custom pages")
 set(DISTRO_CUSTOM_INTRO_FILE "/usr/share/plasma/plasma-welcome/intro-customization.desktop" CACHE STRING "File specifying custom intro content")
+set(APPS_DATA_FILE "${KDE_INSTALL_FULL_DATADIR}/plasma/plasma-welcome/apps.json" CACHE STRING "File listing the apps offered by the software installer page")
 
 file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h *.hpp *.c)
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})

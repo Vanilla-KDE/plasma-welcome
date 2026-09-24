@@ -1,12 +1,4 @@
-/*
- *  SPDX-FileCopyrightText: 2026
- *
- *  SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
- */
-
-.pragma library
-
-var data = {
+{
     "core": [
         {
             "name": "Ark",
@@ -59,10 +51,6 @@ var data = {
         {
             "name": "KWrite",
             "id": "org.kde.kwrite"
-        },
-        {
-            "name": "Merkuro",
-            "id": "org.kde.merkuro"
         },
         {
             "name": "Okular",
@@ -123,7 +111,7 @@ var data = {
             "active": false
         },
         {
-            "name": "D\u00e9j\u00e0 Dup Backups",
+            "name": "Déjà Dup Backups",
             "id": "org.gnome.DejaDup",
             "active": false
         },
@@ -219,4 +207,4 @@ var data = {
             "active": false
         }
     ]
-};
+}
