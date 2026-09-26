@@ -40,6 +40,12 @@ Here is an example:
 
 ```json
 {
+    "subsystem": {
+        "commands": [
+            "vso native init",
+            "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+        ]
+    },
     "Test apps": [
         {
             "name": "App 1",
@@ -54,6 +60,10 @@ Here is an example:
 }
 
 ```
+
+The optional `subsystem` section lists the setup commands run from the "Set up the
+system" card on the software installer page, before any app is installed. Commands
+are executed one after another and the run stops at the first failure.
 
 # Customizing the first page
 By default, the first page introduces the distro and mostly talks about Plasma and KDE. If desired, this can be changed by placing a specially crafted desktop file at `/usr/share/plasma/plasma-welcome/intro-customization.desktop`. In this file, you can supply custom intro text, which will be displayed first, before the standard text talking about Plasma and KDE. It is recommended to keep this text short.

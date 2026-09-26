@@ -20,6 +20,7 @@ Welcome.Page {
 
     property var groups: []
     property var selectedApps: []
+    property var subsystemCommands: []
     property bool installing: false
 
     property var iconCache: ({})
@@ -51,13 +52,23 @@ Welcome.Page {
                 console.warn("Failed to load app list from", Private.App.appsDataFile);
                 root.groups = [];
                 root.selectedApps = [];
+                root.subsystemCommands = [];
                 return;
             }
 
             const parsed = JSON.parse(raw);
             const loadedGroups = [];
 
+            const subsystem = parsed.subsystem;
+            root.subsystemCommands = subsystem && Array.isArray(subsystem.commands)
+                    ? subsystem.commands
+                    : [];
+
             Object.keys(parsed).forEach(function(groupName) {
+                // `subsystem` holds the system setup commands, not an app group.
+                if (groupName === "subsystem")
+                    return;
+
                 const apps = parsed[groupName].map(function(app) {
                     return {
                         name: app.name,
@@ -93,6 +104,7 @@ Welcome.Page {
             console.warn("Failed to load app list:", error);
             root.groups = [];
             root.selectedApps = [];
+            root.subsystemCommands = [];
         }
     }
 
@@ -453,6 +465,7 @@ Welcome.Page {
 
                 SubsystemCard {
                     id: subsystemCard
+                    subsystemCommand: root.subsystemCommands
                     cardBorderColor: root.cardBorderColor
                     onLogRequested: function(title, log) {
                         root.showLog(title, log);
