@@ -14,21 +14,24 @@ Kirigami.ShadowedRectangle {
     id: subsystemCardRoot
 
     property string subsystemTitle: i18nc("@title", "Set up the system")
-    property string subsystemCommand: "
-    vso native init\n
-    flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo\n
-    "
-    
+    // Injected from the page, which reads it from the external apps.json
+    // ("subsystem" -> "commands"). Accepts a list of commands, or a single
+    // string with one command per line.
+    property var subsystemCommand: []
+
     property string subsystemStatus: "pending"   // pending | installing | installed | failed
     property string subsystemLog: ""
 
-    // One command per line. Blank lines and surrounding whitespace are ignored,
-    // so multi-line commands can be written directly in subsystemCommand.
-    readonly property var subsystemCommands: subsystemCommand.split("\n").map(function(line) {
-        return line.trim();
-    }).filter(function(line) {
-        return line.length > 0;
-    })
+    // Blank lines and surrounding whitespace are ignored.
+    readonly property var subsystemCommands: {
+        const raw = subsystemCardRoot.subsystemCommand;
+        const list = Array.isArray(raw) ? raw : String(raw).split("\n");
+        return list.map(function(line) {
+            return String(line).trim();
+        }).filter(function(line) {
+            return line.length > 0;
+        });
+    }
 
     // Injected from the parent page.
     property color cardBorderColor: Qt.rgba(0, 0, 0, 0.25)

@@ -1,7 +1,13 @@
 {
+    "subsystem": {
+        "commands": [
+            "vso native init",
+            "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+        ]
+    },
     "core": [
         {
-            "name": "Ark",
+            "name": "Archk",
             "id": "org.kde.ark"
         },
         {
