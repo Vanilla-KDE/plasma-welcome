@@ -7,7 +7,7 @@
     },
     "core": [
         {
-            "name": "Archk",
+            "name": "Ark",
             "id": "org.kde.ark"
         },
         {
@@ -69,6 +69,13 @@
         {
             "name": "Weather",
             "id": "org.kde.kweather"
+        }
+    ],
+    "input method": [
+        {
+            "name": "Fcitx 5",
+            "id": "org.fcitx.Fcitx5",
+            "active": false
         }
     ],
     "office": [
