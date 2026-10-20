@@ -82,14 +82,25 @@ QString App::appsDataFile() const
 {
     QStringList candidates;
 
+    // Explicit override, useful for testing an app list without reinstalling.
     const QString overrideFile = qEnvironmentVariable("PLASMA_WELCOME_APPS_FILE");
     if (!overrideFile.isEmpty()) {
         candidates.append(overrideFile);
     }
 
-    candidates.append(QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("plasma/plasma-welcome/apps.json")));
+    // Per-user override.
+    candidates.append(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/plasma/plasma-welcome/apps.json"));
 
+    // The copy in the source tree. It only exists in a development checkout and
+    // is checked before the installed copies so that edits take effect without
+    // reinstalling, even if an older file is shipped in the data directories.
+    candidates.append(QString::fromLatin1(APPS_DATA_SOURCE_FILE));
+
+    // Install path used at build time.
     candidates.append(QString::fromLatin1(APPS_DATA_FILE));
+
+    // System-wide data directories.
+    candidates.append(QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("plasma/plasma-welcome/apps.json")));
 
     for (const QString &candidate : candidates) {
         if (QFileInfo::exists(candidate)) {

@@ -79,6 +79,7 @@ ecm_target_qml_sources(plasma-welcome
     qml/pages/enjoy/Supporters.qml
 
     qml/pages/components/AppCard.qml
+    qml/pages/components/AppIconProvider.qml
     qml/pages/components/GroupCard.qml
     qml/pages/components/LogDialog.qml
     qml/pages/components/SubsystemCard.qml
@@ -97,6 +98,7 @@ ecm_target_qml_sources(plasma-welcome
 target_compile_definitions(plasma-welcome PRIVATE "DISTRO_CUSTOM_PAGE_FOLDER=\"${DISTRO_CUSTOM_PAGE_FOLDER}\"")
 target_compile_definitions(plasma-welcome PRIVATE "DISTRO_CUSTOM_INTRO_FILE=\"${DISTRO_CUSTOM_INTRO_FILE}\"")
 target_compile_definitions(plasma-welcome PRIVATE "APPS_DATA_FILE=\"${APPS_DATA_FILE}\"")
+target_compile_definitions(plasma-welcome PRIVATE "APPS_DATA_SOURCE_FILE=\"${CMAKE_CURRENT_SOURCE_DIR}/data/apps.json\"")
 
 # App list for the software installer page. It is installed to the data
 # directory so it can be customised on disk, and embedded as a fallback

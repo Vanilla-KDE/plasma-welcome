@@ -16,21 +16,41 @@ Welcome.Page {
     id: root
 
     heading: i18nc("@title", "Install apps")
-    description: i18nc("@info", "Choose the apps you want to install. Expand each group to review the apps inside before continuing.")
+    description: i18nc("@info", "Choose the apps you want to install or remove. Expand each group to review the apps inside before continuing.")
 
+    // ---------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------
     property var groups: []
     property var selectedApps: []
     property var subsystemCommands: []
     property bool installing: false
 
-    property var iconCache: ({})
-    property var iconQueue: []
-    property int activeIconRequests: 0
-    readonly property int maxIconRequests: 5
-
     readonly property bool hasSelection: selectedApps.length > 0
+    readonly property bool hasInstallSelection: selectedApps.some(function(app) {
+        return !app.remove;
+    })
+    readonly property bool hasRemoveSelection: selectedApps.some(function(app) {
+        return app.remove;
+    })
     readonly property bool canGoBack: !installing
     readonly property bool canGoForward: !installing
+
+    readonly property string selectionLabel: hasSelection
+            ? i18nc("@info", "%1 app(s) selected", selectedApps.length)
+            : i18nc("@info", "No apps selected")
+
+    readonly property string actionLabel: {
+        if (hasInstallSelection && hasRemoveSelection)
+            return i18nc("@action:button", "Apply selected");
+        if (hasRemoveSelection)
+            return i18nc("@action:button", "Remove selected");
+        return i18nc("@action:button", "Install selected");
+    }
+
+    AppIconProvider {
+        id: iconProvider
+    }
 
     readonly property color cardBorderColor: Qt.rgba(
         Kirigami.Theme.textColor.r,
@@ -39,73 +59,148 @@ Welcome.Page {
         0.25
     )
 
+    // The list is centered instead of stretching across the whole page.
+    readonly property int listWidth: Kirigami.Units.gridUnit * 32
+
     function showLog(title, log) {
         logDialog.appName = title;
         logDialog.logText = log;
         logDialog.open();
     }
 
+    // ---------------------------------------------------------------
+    // Notifications
+    // ---------------------------------------------------------------
+    function notify(message) {
+        const win = applicationWindow();
+        if (win && win.showPassiveNotification)
+            win.showPassiveNotification(message);
+    }
+
+    function notifyFailure(message, title, log) {
+        const win = applicationWindow();
+        if (!win || !win.showPassiveNotification)
+            return;
+
+        win.showPassiveNotification(
+            message,
+            "long",
+            i18nc("@action:button", "View log"),
+            function() {
+                root.showLog(title, log);
+            }
+        );
+    }
+
+    // ---------------------------------------------------------------
+    // Loading the app list
+    // ---------------------------------------------------------------
     function loadApps() {
+        const raw = Private.App.appsData;
+        if (!raw) {
+            console.warn("Failed to load app list from", Private.App.appsDataFile);
+            resetState();
+            return;
+        }
+
+        let parsed;
         try {
-            const raw = Private.App.appsData;
-            if (!raw) {
-                console.warn("Failed to load app list from", Private.App.appsDataFile);
-                root.groups = [];
-                root.selectedApps = [];
-                root.subsystemCommands = [];
-                return;
-            }
-
-            const parsed = JSON.parse(raw);
-            const loadedGroups = [];
-
-            const subsystem = parsed.subsystem;
-            root.subsystemCommands = subsystem && Array.isArray(subsystem.commands)
-                    ? subsystem.commands
-                    : [];
-
-            Object.keys(parsed).forEach(function(groupName) {
-                // `subsystem` holds the system setup commands, not an app group.
-                if (groupName === "subsystem")
-                    return;
-
-                const apps = parsed[groupName].map(function(app) {
-                    return {
-                        name: app.name,
-                        id: app.id,
-                        selected: app.active !== undefined ? !!app.active : true,
-                        installStatus: "pending",
-                        installLog: ""
-                    };
-                });
-
-                loadedGroups.push({
-                    name: normalizeGroupName(groupName),
-                    key: groupName,
-                    expanded: true,
-                    apps: apps,
-                    selectedCount: apps.filter(function(a) {
-                        return a.selected;
-                    }).length,
-                    allSelected: apps.length > 0 && apps.every(function(a) {
-                        return a.selected;
-                    })
-                });
-            });
-
-            root.groups = loadedGroups;
-            refreshSelectedApps();
-
-            for (let gi = 0; gi < root.groups.length; ++gi) {
-                if (root.groups[gi].expanded)
-                    root.requestIconsForGroup(gi);
-            }
+            parsed = JSON.parse(raw);
         } catch (error) {
             console.warn("Failed to load app list:", error);
-            root.groups = [];
-            root.selectedApps = [];
-            root.subsystemCommands = [];
+            resetState();
+            return;
         }
+
+        root.subsystemCommands = subsystemCommandsFrom(parsed);
+
+        // The "deprecated" group only offers installed apps for removal, so it
+        // can only be built once the installed apps are known.
+        listInstalledApps(function(installedApps) {
+            root.groups = buildGroups(parsed, installedApps);
+            refreshSelectedApps();
+        });
+    }
+
+    function resetState() {
+        root.groups = [];
+        root.selectedApps = [];
+        root.subsystemCommands = [];
+    }
+
+    function subsystemCommandsFrom(parsed) {
+        const commands = parsed.subsystem && parsed.subsystem.commands;
+        return Array.isArray(commands) ? commands : [];
+    }
+
+    // Reports every Flatpak app installed for the user as `{ appId: true }`.
+    function listInstalledApps(callback) {
+        Welcome.Utils.runCommand("flatpak list --app --columns=application", function(status, output) {
+            const installed = {};
+
+            if (status === 0 && output) {
+                const lines = output.split("\n");
+                for (let i = 0; i < lines.length; ++i) {
+                    const appId = lines[i].trim();
+                    if (appId.length > 0)
+                        installed[appId] = true;
+                }
+            }
+
+            callback(installed);
+        });
+    }
+
+    function buildGroups(parsed, installedApps) {
+        const groups = Object.keys(parsed)
+            .filter(function(key) {
+                // `subsystem` holds the setup commands and `deprecated` is
+                // built separately, so neither is a regular app group.
+                return key !== "subsystem"
+                        && key !== "deprecated"
+                        && Array.isArray(parsed[key]);
+            })
+            .map(function(key) {
+                return createGroup(key, parsed[key], false);
+            });
+
+        // Only offer apps that are currently installed for removal; when none
+        // of them is installed, the group is not shown at all.
+        const deprecatedApps = Array.isArray(parsed.deprecated)
+                ? parsed.deprecated.filter(function(app) {
+                    return app && installedApps[app.id];
+                })
+                : [];
+
+        if (deprecatedApps.length > 0)
+            groups.push(createGroup("deprecated", deprecatedApps, true));
+
+        return groups;
+    }
+
+    // Turns one apps.json section into the group object the cards render.
+    function createGroup(groupName, appList, deprecated) {
+        const apps = appList.map(function(app) {
+            return {
+                name: app.name,
+                id: app.id,
+                // Removals are opt-in so installed apps are never removed by
+                // accident, while regular groups are selected by default.
+                selected: app.active !== undefined ? !!app.active : !deprecated,
+                installStatus: "pending",
+                installLog: ""
+            };
+        });
+
+        return recountGroup({
+            name: groupName === "deprecated"
+                ? i18nc("@label", "Deprecated")
+                : normalizeGroupName(groupName),
+            key: groupName,
+            deprecated: deprecated,
+            expanded: false,
+            apps: apps
+        });
     }
 
     function normalizeGroupName(name) {
@@ -114,69 +209,70 @@ Welcome.Page {
         return name.charAt(0).toUpperCase() + name.slice(1);
     }
 
-    function refreshSelectedApps() {
-        const selected = [];
-        const groups = root.groups.slice();
-
-        for (let gi = 0; gi < groups.length; ++gi) {
-            const group = Object.assign({}, groups[gi]);
-            const apps = group.apps.slice();
-            let count = 0;
-
-            for (let ai = 0; ai < apps.length; ++ai) {
-                const app = apps[ai];
-                if (app.selected) {
-                    selected.push({
-                        name: app.name,
-                        id: app.id,
-                        groupIndex: gi,
-                        appIndex: ai
-                    });
-                    ++count;
-                }
-            }
-
-            group.selectedCount = count;
-            group.allSelected = apps.length > 0 && count === apps.length;
-            groups[gi] = group;
+    // ---------------------------------------------------------------
+    // Group and app state
+    // ---------------------------------------------------------------
+    // Returns a copy of `group` with its selection counters recomputed.
+    function recountGroup(group) {
+        let count = 0;
+        for (let i = 0; i < group.apps.length; ++i) {
+            if (group.apps[i].selected)
+                ++count;
         }
 
-        root.groups = groups;
+        return Object.assign({}, group, {
+            selectedCount: count,
+            allSelected: group.apps.length > 0 && count === group.apps.length
+        });
+    }
+
+    // Rebuilds the flat list of selected apps and keeps the group counters in
+    // sync with it.
+    function refreshSelectedApps() {
+        const selected = [];
+
+        root.groups = root.groups.map(function(group, groupIndex) {
+            const counted = recountGroup(group);
+
+            counted.apps.forEach(function(app, appIndex) {
+                if (!app.selected)
+                    return;
+
+                selected.push({
+                    name: app.name,
+                    id: app.id,
+                    groupIndex: groupIndex,
+                    appIndex: appIndex,
+                    remove: group.deprecated === true
+                });
+            });
+
+            return counted;
+        });
+
         root.selectedApps = selected;
     }
 
     function updateApp(groupIndex, appIndex, changes) {
-        if (groupIndex < 0 || groupIndex >= root.groups.length)
-            return;
-
-        const groups = root.groups.slice();
-        const group = Object.assign({}, groups[groupIndex]);
-
-        if (appIndex < 0 || appIndex >= group.apps.length)
+        const group = root.groups[groupIndex];
+        if (!group || !group.apps[appIndex])
             return;
 
         const apps = group.apps.slice();
         apps[appIndex] = Object.assign({}, apps[appIndex], changes);
-        group.apps = apps;
 
-        let selectedCount = 0;
-        for (let i = 0; i < apps.length; ++i) {
-            if (apps[i].selected)
-                ++selectedCount;
-        }
-
-        group.selectedCount = selectedCount;
-        group.allSelected = apps.length > 0 && selectedCount === apps.length;
-
-        groups[groupIndex] = group;
+        const groups = root.groups.slice();
+        groups[groupIndex] = recountGroup(Object.assign({}, group, {
+            apps: apps
+        }));
         root.groups = groups;
     }
 
     function toggleGroup(groupIndex, checked) {
-        if (groupIndex < 0 || groupIndex >= root.groups.length)
+        const group = root.groups[groupIndex];
+        if (!group)
             return;
 
-        const group = root.groups[groupIndex];
         const apps = group.apps.map(function(app) {
             return Object.assign({}, app, {
                 selected: checked
@@ -184,12 +280,9 @@ Welcome.Page {
         });
 
         const groups = root.groups.slice();
-        groups[groupIndex] = Object.assign({}, group, {
-            apps: apps,
-            selectedCount: checked ? apps.length : 0,
-            allSelected: checked && apps.length > 0
-        });
-
+        groups[groupIndex] = recountGroup(Object.assign({}, group, {
+            apps: apps
+        }));
         root.groups = groups;
         refreshSelectedApps();
     }
@@ -202,89 +295,26 @@ Welcome.Page {
     }
 
     function toggleGroupExpanded(groupIndex) {
-        if (groupIndex < 0 || groupIndex >= root.groups.length)
+        const group = root.groups[groupIndex];
+        if (!group)
             return;
 
-        const group = root.groups[groupIndex];
-        const newExpanded = !group.expanded;
+        const expanded = !group.expanded;
 
         const groups = root.groups.slice();
         groups[groupIndex] = Object.assign({}, group, {
-            expanded: newExpanded
+            expanded: expanded
         });
         root.groups = groups;
 
-        if (newExpanded)
-            root.requestIconsForGroup(groupIndex);
+        // Icons are only fetched once the group is opened.
+        if (expanded)
+            iconProvider.requestForApps(group.apps);
     }
 
-    function requestIconsForGroup(groupIndex) {
-        if (groupIndex < 0 || groupIndex >= root.groups.length)
-            return;
-
-        const apps = root.groups[groupIndex].apps;
-        for (let i = 0; i < apps.length; ++i)
-            root.queueIconFetch(apps[i].id);
-    }
-
-    function queueIconFetch(appId) {
-        if (!appId)
-            return;
-        if (root.iconCache[appId] !== undefined)
-            return;
-        if (root.iconQueue.indexOf(appId) !== -1)
-            return;
-
-        root.iconQueue.push(appId);
-        pumpIconQueue();
-    }
-
-    function pumpIconQueue() {
-        while (root.activeIconRequests < root.maxIconRequests
-               && root.iconQueue.length > 0) {
-            const appId = root.iconQueue.shift();
-            if (root.iconCache[appId] !== undefined)
-                continue;
-            ++root.activeIconRequests;
-            doFetchIcon(appId);
-        }
-    }
-
-    function doFetchIcon(appId) {
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", "https://flathub.org/api/v2/appstream/" + encodeURIComponent(appId));
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState !== XMLHttpRequest.DONE)
-                return;
-
-            --root.activeIconRequests;
-
-            if (xhr.status === 200) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    const iconUrl = (data && data.icon) ? data.icon : "";
-
-                    if (iconUrl) {
-                        const cache = Object.assign({}, root.iconCache);
-                        cache[appId] = iconUrl;
-                        root.iconCache = cache;
-                    } else {
-                        console.warn("No icon URL found for", appId);
-                    }
-                } catch (error) {
-                    console.warn("Parse icon error for", appId, error);
-                }
-            } else {
-                console.warn("Unable to fetch icon for", appId, "status:", xhr.status);
-            }
-
-            root.pumpIconQueue();
-        };
-
-        xhr.send();
-    }
-
+    // ---------------------------------------------------------------
+    // System setup ("subsystem" commands)
+    // ---------------------------------------------------------------
     function continueToInstall() {
         if (!root.hasSelection || root.installing)
             return;
@@ -293,30 +323,18 @@ Welcome.Page {
 
         runSubsystem(function(success, log) {
             if (!success)
-                notifySubsystemFailure(log);
+                notifyFailure(i18nc("@info", "System setup failed"),
+                              subsystemCard.subsystemTitle, log);
 
+            // The subsystem phase is over; the app phase manages the flag.
             root.installing = false;
-            root.startInstallation();
+            root.applySelection();
         });
-    }
-
-    function notifySubsystemFailure(log) {
-        const win = applicationWindow();
-        if (!win || !win.showPassiveNotification)
-            return;
-
-        win.showPassiveNotification(
-            i18nc("@info", "System setup failed"),
-            "long",
-            i18nc("@action:button", "View log"),
-            function() {
-                root.showLog(subsystemCard.subsystemTitle, log);
-            }
-        );
     }
 
     function runSubsystem(onFinished) {
         const commands = subsystemCard.subsystemCommands;
+
         if (commands.length === 0) {
             subsystemCard.subsystemStatus = "installed";
             onFinished(true, "");
@@ -329,9 +347,9 @@ Welcome.Page {
         runSubsystemCommand(commands, 0, onFinished);
     }
 
-    // Welcome.Utils.runCommand() runs a single command without a shell, so
-    // multiple lines are executed here one after another and stop on the first
-    // failure, collecting every output into subsystemLog.
+    // Welcome.Utils.runCommand() runs a single command without a shell, so the
+    // commands are executed one after another and stop at the first failure,
+    // collecting every output into subsystemLog.
     function runSubsystemCommand(commands, index, onFinished) {
         if (index >= commands.length) {
             subsystemCard.subsystemStatus = "installed";
@@ -342,11 +360,11 @@ Welcome.Page {
         const command = commands[index];
         appendSubsystemLog(i18nc("@info:shell", "$ %1", command));
 
-        Welcome.Utils.runCommand(command, function(returnStatus, outputText) {
-            if (outputText && outputText.length > 0)
-                appendSubsystemLog(outputText);
+        Welcome.Utils.runCommand(command, function(status, output) {
+            if (output && output.length > 0)
+                appendSubsystemLog(output);
 
-            if (returnStatus !== 0) {
+            if (status !== 0) {
                 subsystemCard.subsystemStatus = "failed";
                 onFinished(false, subsystemCard.subsystemLog);
                 return;
@@ -357,67 +375,97 @@ Welcome.Page {
     }
 
     function appendSubsystemLog(text) {
-        subsystemCard.subsystemLog = subsystemCard.subsystemLog.length > 0
-                ? subsystemCard.subsystemLog + "\n" + text
-                : text;
+        const log = subsystemCard.subsystemLog;
+        subsystemCard.subsystemLog = log.length > 0 ? log + "\n" + text : text;
     }
 
-    function startInstallation() {
+    // ---------------------------------------------------------------
+    // Installing and removing apps
+    // ---------------------------------------------------------------
+    function applySelection() {
         if (!root.hasSelection || root.installing)
             return;
 
         root.installing = true;
 
-        const selected = root.selectedApps.slice();
-        for (let i = 0; i < selected.length; ++i) {
-            updateApp(selected[i].groupIndex, selected[i].appIndex, {
+        const installs = [];
+        const removals = [];
+
+        root.selectedApps.forEach(function(app) {
+            updateApp(app.groupIndex, app.appIndex, {
                 installStatus: "pending",
                 installLog: ""
             });
-        }
 
-        installNext(0);
+            (app.remove ? removals : installs).push(app);
+        });
+
+        // Install first so a failing install never blocks the removals.
+        runOperation(installs.concat(removals), 0);
     }
 
-    function installNext(index) {
-        const selected = root.selectedApps;
-        if (index >= selected.length) {
-            root.installing = false;
+    // Runs the queue one app at a time, since runCommand() only handles a
+    // single command.
+    function runOperation(operations, index) {
+        if (index >= operations.length) {
+            root.finishInstallation();
             return;
         }
 
-        const app = selected[index];
-        const gi = app.groupIndex;
-        const ai = app.appIndex;
+        const app = operations[index];
+        const install = !app.remove;
 
-        updateApp(gi, ai, { installStatus: "installing" });
+        updateApp(app.groupIndex, app.appIndex, { installStatus: "installing" });
 
-        const command = "flatpak --user install -y " + app.id;
+        const command = (install ? "flatpak --user install -y " : "flatpak uninstall -y ") + app.id;
 
-        Welcome.Utils.runCommand(command, function(returnStatus, outputText) {
-            const success = (returnStatus === 0);
+        Welcome.Utils.runCommand(command, function(status, output) {
+            const success = (status === 0);
 
-            updateApp(gi, ai, {
-                installStatus: success ? "installed" : "failed",
-                installLog: outputText
+            updateApp(app.groupIndex, app.appIndex, {
+                installStatus: success ? (install ? "installed" : "removed") : "failed",
+                installLog: output
             });
 
             if (!success) {
-                const win = applicationWindow();
-                if (win && win.showPassiveNotification) {
-                    win.showPassiveNotification(
-                        i18nc("@info", "Failed to install %1", app.name),
-                        "long",
-                        i18nc("@action:button", "View log"),
-                        function() {
-                            root.showLog(app.name, outputText);
-                        }
-                    );
-                }
+                notifyFailure(install
+                              ? i18nc("@info", "Failed to install %1", app.name)
+                              : i18nc("@info", "Failed to remove %1", app.name),
+                              app.name, output);
+            } else if (!install) {
+                notify(i18nc("@info", "Removed %1", app.name));
             }
 
-            root.installNext(index + 1);
+            runOperation(operations, index + 1);
         });
+    }
+
+    function finishInstallation() {
+        root.installing = false;
+
+        // Removed apps no longer belong to the deprecated group, which only
+        // exists for installed apps, so drop the group once it is empty.
+        root.groups = root.groups
+            .map(function(group) {
+                if (!group.deprecated)
+                    return group;
+
+                const apps = group.apps.filter(function(app) {
+                    return app.installStatus !== "removed";
+                });
+
+                if (apps.length === 0)
+                    return null;
+
+                return recountGroup(Object.assign({}, group, {
+                    apps: apps
+                }));
+            })
+            .filter(function(group) {
+                return group !== null;
+            });
+
+        refreshSelectedApps();
     }
 
     Component.onCompleted: loadApps()
@@ -427,26 +475,25 @@ Welcome.Page {
     }
 
     ColumnLayout {
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(parent.width, root.listWidth)
         spacing: Kirigami.Units.largeSpacing
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 0
-            Layout.rightMargin: 0
             spacing: Kirigami.Units.smallSpacing
 
             QQC2.Label {
                 Layout.fillWidth: true
-                text: root.hasSelection
-                      ? i18nc("@info", "%1 app(s) selected", root.selectedApps.length)
-                      : i18nc("@info", "No apps selected")
+                text: root.selectionLabel
                 font.weight: Font.DemiBold
                 wrapMode: Text.WordWrap
             }
 
             QQC2.Button {
-                text: i18nc("@action:button", "Install selected")
+                text: root.actionLabel
                 enabled: root.hasSelection && !root.installing
                 onClicked: root.continueToInstall()
             }
@@ -476,7 +523,7 @@ Welcome.Page {
                     model: root.groups
 
                     delegate: GroupCard {
-                        iconCache: root.iconCache
+                        iconCache: iconProvider.cache
                         installing: root.installing
                         cardBorderColor: root.cardBorderColor
                         onGroupToggled: function(groupIndex, checked) {

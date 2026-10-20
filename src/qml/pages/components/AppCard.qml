@@ -86,6 +86,7 @@ Kirigami.ShadowedRectangle {
                 source: "dialog-ok-apply"
                 color: Kirigami.Theme.positiveTextColor
                 visible: appCardRoot.modelData.installStatus === "installed"
+                         || appCardRoot.modelData.installStatus === "removed"
             }
 
             Kirigami.Icon {

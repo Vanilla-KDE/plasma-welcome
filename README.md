@@ -61,9 +61,9 @@ Here is an example:
 
 ```
 
-The optional `subsystem` section lists the setup commands run from the "Set up the
-system" card on the software installer page, before any app is installed. Commands
-are executed one after another and the run stops at the first failure.
+The optional `subsystem` section lists the setup commands run from the "Set up the system" card on the software installer page, before any app is installed. Commands are executed one after another and the run stops at the first failure.
+
+The optional `deprecated` section lists apps that are offered for removal instead of installation. Apps in this section are only shown when they are actually installed, and the whole group is hidden otherwise.
 
 # Customizing the first page
 By default, the first page introduces the distro and mostly talks about Plasma and KDE. If desired, this can be changed by placing a specially crafted desktop file at `/usr/share/plasma/plasma-welcome/intro-customization.desktop`. In this file, you can supply custom intro text, which will be displayed first, before the standard text talking about Plasma and KDE. It is recommended to keep this text short.
