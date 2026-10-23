@@ -1,0 +1,3 @@
+[submodule "plasma-upstream"]
+	path = plasma-upstream
+	url = https://salsa.debian.org/qt-kde-team/kde/plasma-welcome.git
