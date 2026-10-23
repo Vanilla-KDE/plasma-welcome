@@ -19,15 +19,20 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/vanilla-os/pico:latest
+      image: ghcr.io/vanilla-os/pico:dev
       volumes:
         - /proc:/proc
         - /:/run/host
       options: --privileged -it
 
     steps:
+      - name: Install Git
+        run: |
+          apt-get update
+          apt-get install -y git
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
       - name: Install build dependencies
         run: |
           apt-get update

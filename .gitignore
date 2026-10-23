@@ -9,3 +9,4 @@ CMakeLists.txt.user
 /compile_commands.json
 .vscode
 test.sh
+.pc
