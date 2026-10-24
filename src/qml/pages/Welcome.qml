@@ -71,48 +71,27 @@ Welcome.Page {
                 // Our default image
                 Private.App.customIntroIcon.length === 0
 
-        onClicked: Qt.openUrlExternally(url)
+            Layout.alignment: Qt.AlignHCenter
+            Layout.fillHeight: true
+            Layout.maximumWidth: root.width
+
+            sourceComponent: isImage ? imageComponent : iconComponent
 
             Component {
                 id: imageComponent
 
                 Image {
                     id: image
-                    source: Private.App.customIntroIcon || "konqi-kde-hi.png"
+                    source: "file:///usr/share/icons/hicolor/scalable/emblems/emblem-vanilla.svg"
                     fillMode: Image.PreserveAspectFit
 
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillHeight: true
-                Layout.maximumWidth: root.width
-
-                sourceComponent: imageComponent
-
-                Component {
-                    id: imageComponent
-
-                    Image {
-                        id: image
-                        source: "file:///usr/share/icons/hicolor/scalable/emblems/emblem-vanilla.svg"
-                        fillMode: Image.PreserveAspectFit
-
-                        Kirigami.PlaceholderMessage {
-                            width: root.width - (Kirigami.Units.largeSpacing * 4)
-                            anchors.centerIn: parent
-                            text: i18nc("@title", "Image loading failed")
-                            explanation: xi18nc("@info:placeholder", "Could not load <filename>%1</filename>. Make sure it exists.", Private.App.customIntroIcon)
-                            visible: image.status == Image.Error
-                        }
+                    Kirigami.PlaceholderMessage {
+                        width: image.width
+                        anchors.centerIn: parent
+                        text: i18nc("@title", "Image loading failed")
+                        explanation: xi18nc("@info:placeholder", "Could not load <filename>%1</filename>. Make sure it exists.", image.source)
+                        visible: image.status == Image.Error
                     }
-                }
-
-                HoverHandler {
-                    id: hoverhandler
-                    cursorShape: Qt.PointingHandCursor
-                }
-
-                QQC2.ToolTip {
-                    visible: hoverhandler.hovered
-                    text: i18nc("@action:button clicking on this takes the user to a web page", "Visit %1", konqiButton.url)
                 }
             }
 
@@ -130,7 +109,7 @@ Welcome.Page {
         QQC2.Label {
             Layout.alignment: Qt.AlignHCenter
             Layout.maximumWidth: Math.round(Math.max(root.width / 2, imageContainer.implicitWidth / 2))
-            text: Private.App.customIntroIconCaption || i18nc("@info", "The KDE mascot Konqi welcomes you to the KDE community!")
+            text: Private.App.customIntroIconCaption || i18nc("@info", "Welcome to Vanilla OS community!")
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
         }
